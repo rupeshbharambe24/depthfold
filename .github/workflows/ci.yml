@@ -38,7 +38,7 @@ jobs:
       # The runner ships an Android SDK at $ANDROID_HOME; add the platform this app compiles against.
       - run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
       - run: ./gradlew --no-daemon testDebugUnitTest lint assembleDebug
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: app-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
