@@ -1,0 +1,37 @@
+name: Domain pack proposal
+description: Propose measurement logic for a specific kind of object (parcels, livestock, furniture, plants, ...).
+labels: ["domain-pack", "enhancement"]
+body:
+  - type: input
+    id: domain
+    attributes:
+      label: Domain
+      placeholder: e.g. parcel dimensioning, cattle body measurements, tree trunk diameter
+    validations:
+      required: true
+  - type: textarea
+    id: measurements
+    attributes:
+      label: What should be measured, and how is it defined?
+      description: Cite the standard or convention where one exists (e.g. ICAR for livestock, carrier rules for parcels).
+    validations:
+      required: true
+  - type: textarea
+    id: accuracy
+    attributes:
+      label: Required accuracy and who uses the numbers
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Ground truth and test data
+      description: How can the pack be validated? Reference objects, public datasets, tape measurements?
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to build it?
+      options:
+        - Yes
+        - Together with others
+        - No, proposing only

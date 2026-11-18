@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "depthfold"
+version = "0.1.0"
+description = "Turn Depthfold capture bundles (RGB + ARCore depth + poses) into meshes, point clouds, 2D profiles and measurements."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [{ name = "Depthfold contributors" }]
+keywords = ["arcore", "depth", "tsdf", "3d-scanning", "photogrammetry", "measurement"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "open3d>=0.18",
+    "trimesh>=4.0",
+    "ezdxf>=1.1",
+    "pillow>=10.0",
+]
+
+[project.scripts]
+depthfold = "depthfold.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/rupeshbharambe24/depthfold"
+Documentation = "https://github.com/rupeshbharambe24/depthfold/tree/main/processing#readme"
+Issues = "https://github.com/rupeshbharambe24/depthfold/issues"
+Changelog = "https://github.com/rupeshbharambe24/depthfold/blob/main/CHANGELOG.md"
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+docs = ["matplotlib>=3.8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/depthfold"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -p no:dash"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "NPY"]

@@ -1,0 +1,61 @@
+name: Device accuracy report
+description: Share how Depthfold measured a real object on your phone. These reports build the per-device accuracy table.
+labels: ["device-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Measure a rigid object with a ruler or calipers (a box, a bottle, a book), record it with the app, then run
+        `depthfold validate` and `depthfold measure` on the capture. Every report, good or bad, helps.
+  - type: input
+    id: device
+    attributes:
+      label: Phone model and Android version
+      placeholder: e.g. Redmi Note 13 Pro, Android 14
+    validations:
+      required: true
+  - type: dropdown
+    id: depth-mode
+    attributes:
+      label: Depth mode reported by the app
+      options: [raw, smooth, none]
+    validations:
+      required: true
+  - type: input
+    id: object
+    attributes:
+      label: Object and material
+      placeholder: e.g. cardboard box, matte plastic bottle
+    validations:
+      required: true
+  - type: textarea
+    id: results
+    attributes:
+      label: True vs measured dimensions
+      description: One line per dimension.
+      placeholder: |
+        height: true 240 mm, measured 243.1 ± 2.9 mm
+        diameter: true 70 mm, measured 72.4 ± 2.6 mm
+    validations:
+      required: true
+  - type: textarea
+    id: validate
+    attributes:
+      label: Output of `depthfold validate <capture>`
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: conditions
+    attributes:
+      label: Capture conditions
+      description: Distance to the object, lighting, how you moved, surface underneath, anything unusual.
+  - type: dropdown
+    id: share
+    attributes:
+      label: Can you share the capture zip?
+      description: Only if it contains nothing private. Shared captures can become benchmark data.
+      options:
+        - "No"
+        - Yes, on request
+        - Yes, attached or linked below

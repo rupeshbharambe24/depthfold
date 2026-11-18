@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only zipped bundles in the share cache are exposed to other apps. -->
+<paths>
+    <cache-path
+        name="shared"
+        path="shared/" />
+</paths>

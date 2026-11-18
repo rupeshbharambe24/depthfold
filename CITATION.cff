@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: If you use Depthfold in your work, please cite it as below.
+title: "Depthfold: open ARCore capture and measurement toolkit"
+type: software
+authors:
+  - family-names: Bharambe
+    given-names: Rupesh
+license: Apache-2.0
+repository-code: https://github.com/rupeshbharambe24/depthfold
+version: 0.1.0
+date-released: 2026-11-18
+keywords:
+  - arcore
+  - depth sensing
+  - 3d scanning
+  - measurement
+  - tsdf fusion

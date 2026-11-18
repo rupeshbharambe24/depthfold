@@ -1,0 +1,57 @@
+name: Bug report
+description: Something in the app, the toolkit or the bundle format does not work as documented.
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to report this. Please do not attach captures that show people or private spaces.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Android app
+        - Processing toolkit (depthfold CLI / Python)
+        - Capture bundle format
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. uv run depthfold synth -o demo/bottle
+        2. uv run depthfold measure demo/bottle -o out
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output, logs or `depthfold validate` result
+      render: text
+  - type: input
+    id: device
+    attributes:
+      label: Phone model and Android version (app issues)
+      placeholder: e.g. Samsung Galaxy A55, Android 15
+  - type: input
+    id: version
+    attributes:
+      label: Depthfold version or commit
+      placeholder: e.g. 0.1.0 or b3ab462
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS and Python version (toolkit issues)
+      placeholder: e.g. Ubuntu 24.04, Python 3.12

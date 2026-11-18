@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/rupeshbharambe24/depthfold/discussions
+    about: Ask how to use Depthfold, share captures and results, or discuss an idea before opening an issue.
+  - name: Security vulnerability
+    url: https://github.com/rupeshbharambe24/depthfold/security/advisories/new
+    about: Report security problems privately, not as a public issue.
