@@ -165,22 +165,14 @@ Measuring this per device is the first item on the roadmap, and the reason
 |---|---|
 | Done | Capture bundle spec v0.1, Android recorder, toolkit (`validate`, `fuse`, `measure`, `export`, `synth`), interop check, CI |
 | Next | **Real-device validation** on common phones (Samsung Galaxy A/M, Redmi Note, Pixel, OnePlus Nord), and fixes for what breaks |
-| Next | **Scale check** with a printed ChArUco board, reported in the measurement report |
 | Planned | **Measurement report schema** as a stable, versioned JSON Schema |
 | Planned | **Per-device accuracy benchmark**: reference objects, shared captures, public leaderboard |
-| Planned | **Domain packs**, self-contained measurement plugins on top of the core |
+| Planned | **More shape fits**: spheres, cones and tapered profiles, freeform profiles, flat outlines of planar parts |
+| Planned | **More export formats**: USDZ, 3MF, E57, and glTF with real-world units and measurement annotations |
 | Planned | On-device fusion and an in-app preview of the mesh and measurements |
 | Planned | Optional detail refinement with photogrammetry or Gaussian splatting from the recorded poses |
 
-Domain packs under discussion:
-
-- **Parcel and packaging**: box dimensions and volumetric weight.
-- **Livestock**: body measurements for cattle and buffalo type classification, building on
-  [VETRA](https://github.com/rupeshbharambe24/VETRA---App).
-- **Body, wellness only**: repeatable lengths and joint angles over time, using ARCore depth with pose landmarks.
-  Not a medical device.
-
-Have another domain in mind? [Propose a domain pack](https://github.com/rupeshbharambe24/depthfold/issues/new?template=domain_pack.yml).
+Need a shape or a file format that is not listed? [Propose it](https://github.com/rupeshbharambe24/depthfold/issues/new?template=shape_or_format.yml).
 
 ## FAQ
 
@@ -236,7 +228,7 @@ Contributions of every size are welcome, and you do not need a phone for most of
 - **Have an ARCore phone?** File a [device accuracy report](https://github.com/rupeshbharambe24/depthfold/issues/new?template=device_report.yml).
 - **Python / geometry:** better fusion, new shape fits, faster measurement. Start in [`processing/`](processing/).
 - **Android / Kotlin:** capture guidance, on-device preview, UI. Start in [`android/`](android/).
-- **A domain you know:** design a [domain pack](https://github.com/rupeshbharambe24/depthfold/issues/new?template=domain_pack.yml).
+- **A shape or format you need:** propose a [shape fit or export format](https://github.com/rupeshbharambe24/depthfold/issues/new?template=shape_or_format.yml).
 - **Docs and examples:** tutorials, translations, sample captures.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) to get set up, browse

@@ -9,7 +9,7 @@ Thanks for helping. Depthfold is young, so there is room to shape it, and most c
 | An [ARCore phone](https://developers.google.com/ar/devices) | Record a ruler-measured object and file a [device accuracy report](https://github.com/rupeshbharambe24/depthfold/issues/new?template=device_report.yml) |
 | Python / geometry skills | Improve fusion, add shape fits, speed up measurement, add export formats |
 | Android / Kotlin skills | Capture guidance, on-device preview, UI, robustness on real devices |
-| Knowledge of a domain | Design a [domain pack](https://github.com/rupeshbharambe24/depthfold/issues/new?template=domain_pack.yml) (parcels, livestock, furniture, plants, ...) |
+| A shape or file format you need | Propose a [shape fit or export format](https://github.com/rupeshbharambe24/depthfold/issues/new?template=shape_or_format.yml) (cones, spheres, flat outlines, USDZ, 3MF, ...) |
 | Writing skills | Tutorials, clearer docs, translations |
 
 Issues labelled [`good first issue`](https://github.com/rupeshbharambe24/depthfold/labels/good%20first%20issue) are

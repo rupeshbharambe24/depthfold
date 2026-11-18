@@ -1,0 +1,39 @@
+name: Shape fit or export format
+description: Propose a new kind of geometry to fit and measure, or a new file format to export.
+labels: ["geometry", "enhancement"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What are you proposing?
+      options:
+        - A shape fit (e.g. sphere, cone, tapered or freeform profile, flat outline)
+        - An export format (e.g. USDZ, 3MF, E57)
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: objects
+    attributes:
+      label: Example objects and what should come out
+      description: Which real objects should this work for, and which dimensions, drawings or files do you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: Suggested approach or references
+      description: Algorithms, papers, libraries (with licences) or specifications.
+  - type: textarea
+    id: validation
+    attributes:
+      label: How can it be tested?
+      description: For example a synthetic object with known dimensions, or software that should open the exported file.
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to build it?
+      options:
+        - "Yes"
+        - Together with others
+        - No, proposing only
