@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "depthfold"
-version = "0.1.0"
+version = "0.2.0"
 description = "Turn Depthfold capture bundles (RGB + ARCore depth + poses) into meshes, point clouds, 2D profiles and measurements."
 readme = "README.md"
 license = "Apache-2.0"

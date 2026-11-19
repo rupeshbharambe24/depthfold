@@ -13,8 +13,15 @@ algorithms. Version `0.1` is a draft: fields may still change before `1.0`.
 ├── rgb/000000.jpg         # colour image per frame (required)
 ├── depth/000000.png       # 16-bit greyscale PNG, depth in millimetres, 0 = no data (optional per frame)
 ├── confidence/000000.png  # 8-bit greyscale PNG, 0 (none) … 255 (high), same size as depth (optional)
-└── points.ply             # on-device fused point cloud, world frame, metres (optional)
+├── points.ply             # on-device fused point cloud, world frame, metres (optional)
+└── model/                 # 3D model built by the app on request (optional, derived data)
+    ├── mesh.glb           #   glTF 2.0 binary, world frame, metres, vertex colours
+    ├── mesh.ply           #   same mesh, binary PLY, metres
+    ├── mesh.stl           #   same mesh, binary STL, millimetres
+    └── model.json         #   frames used, parameters and mesh statistics
 ```
+
+`model/` is derived from the raw data and can be deleted or rebuilt at any time; readers ignore it.
 
 Depth values are the distance along the camera's optical axis (the camera-frame `z` coordinate, as ARCore
 returns it), not the Euclidean distance along the pixel ray.

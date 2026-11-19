@@ -9,6 +9,7 @@ import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.text.format.Formatter
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -33,6 +35,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,10 +50,15 @@ import dev.depthfold.android.BuildConfig
 import dev.depthfold.android.MainActivity
 import dev.depthfold.android.capture.CaptureRepository
 import dev.depthfold.android.capture.CaptureSummary
+import dev.depthfold.android.model.AndroidRgbDecoder
+import dev.depthfold.android.model.ModelBuilder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.CancellationException
 
 @Composable
 fun CapturesScreen(repository: CaptureRepository, onBack: () -> Unit) {
@@ -61,6 +69,44 @@ fun CapturesScreen(repository: CaptureRepository, onBack: () -> Unit) {
     var busyId by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var pendingDelete by remember { mutableStateOf<CaptureSummary?>(null) }
+    var viewing by remember { mutableStateOf<CaptureSummary?>(null) }
+    var buildingId by remember { mutableStateOf<String?>(null) }
+    var buildJob by remember { mutableStateOf<Job?>(null) }
+    var buildProgress by remember { mutableFloatStateOf(0f) }
+    var buildMessage by remember { mutableStateOf("") }
+
+    fun buildModel(capture: CaptureSummary) {
+        buildingId = capture.id
+        buildProgress = 0f
+        buildMessage = "Starting"
+        error = null
+        buildJob = scope.launch {
+            try {
+                val built = withContext(Dispatchers.Default) {
+                    val job = coroutineContext
+                    ModelBuilder(AndroidRgbDecoder, "Depthfold Android ${BuildConfig.VERSION_NAME}").build(
+                        capture.dir,
+                        progress = { f, m ->
+                            buildProgress = f
+                            buildMessage = m
+                        },
+                        isCancelled = { !job.isActive },
+                    )
+                    repository.summarize(capture.dir)
+                }
+                refresh++
+                viewing = built
+            } catch (e: CancellationException) {
+                throw e // left the screen or pressed Cancel; the previous model, if any, is kept
+            } catch (e: Throwable) {
+                error = "Could not build the 3D model: ${e.message}" +
+                    if (e is OutOfMemoryError) " (not enough memory; try a shorter capture)" else ""
+            } finally {
+                buildingId = null
+                buildJob = null
+            }
+        }
+    }
 
     LaunchedEffect(refresh) {
         captures = withContext(Dispatchers.IO) { repository.list() }
@@ -96,7 +142,13 @@ fun CapturesScreen(repository: CaptureRepository, onBack: () -> Unit) {
                     CaptureCard(
                         capture = capture,
                         busy = busyId == capture.id,
-                        enabled = busyId == null,
+                        enabled = busyId == null && buildingId == null,
+                        building = buildingId == capture.id,
+                        buildProgress = buildProgress,
+                        buildMessage = buildMessage,
+                        onBuild = { buildModel(capture) },
+                        onView = { viewing = capture },
+                        onCancelBuild = { buildJob?.cancel() },
                         onShare = {
                             busyId = capture.id
                             error = null
@@ -118,6 +170,18 @@ fun CapturesScreen(repository: CaptureRepository, onBack: () -> Unit) {
                 }
             }
         }
+    }
+
+    viewing?.let { capture ->
+        BackHandler { viewing = null }
+        ModelScreen(
+            capture = capture,
+            onBack = { viewing = null },
+            onRebuild = {
+                viewing = null
+                buildModel(capture)
+            },
+        )
     }
 
     pendingDelete?.let { capture ->
@@ -145,6 +209,12 @@ private fun CaptureCard(
     capture: CaptureSummary,
     busy: Boolean,
     enabled: Boolean,
+    building: Boolean,
+    buildProgress: Float,
+    buildMessage: String,
+    onBuild: () -> Unit,
+    onView: () -> Unit,
+    onCancelBuild: () -> Unit,
     onShare: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -160,8 +230,32 @@ private fun CaptureCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(8.dp))
+            val hasDepth = capture.depthMode != null && capture.depthMode != "none"
+            when {
+                building -> {
+                    Text(buildMessage, style = MaterialTheme.typography.bodyMedium)
+                    LinearProgressIndicator(
+                        progress = { buildProgress },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    )
+                    TextButton(onClick = onCancelBuild) { Text("Cancel") }
+                }
+                capture.hasModel -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onView, enabled = enabled) { Text("View 3D") }
+                    TextButton(onClick = onBuild, enabled = enabled) { Text("Rebuild") }
+                }
+                hasDepth && capture.frameCount != null -> Button(onClick = onBuild, enabled = enabled) {
+                    Text("Build 3D model")
+                }
+                capture.frameCount != null -> Text(
+                    "No depth on this device, so no 3D model; share the zip to process it on a computer.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.height(4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button(onClick = onShare, enabled = enabled) { Text("Share zip") }
+                OutlinedButton(onClick = onShare, enabled = enabled) { Text("Share zip") }
                 OutlinedButton(onClick = onDelete, enabled = enabled) { Text("Delete") }
                 if (busy) CircularProgressIndicator(Modifier.padding(start = 4.dp))
             }

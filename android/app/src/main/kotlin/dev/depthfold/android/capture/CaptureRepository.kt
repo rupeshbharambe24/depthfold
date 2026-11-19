@@ -4,6 +4,7 @@
  */
 package dev.depthfold.android.capture
 
+import dev.depthfold.android.model.ModelBuilder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
@@ -28,6 +29,8 @@ data class CaptureSummary(
     val frameCount: Int?,
     val depthMode: String?,
     val sizeBytes: Long,
+    /** True when the app has built a 3D model into the bundle's `model/` folder. */
+    val hasModel: Boolean = false,
 )
 
 /** Lists, deletes and zips capture bundles under [root]. Blocking; call from a background thread. */
@@ -47,6 +50,7 @@ class CaptureRepository(val root: File) {
             frameCount = manifest?.get("frame_count")?.jsonPrimitive?.intOrNull,
             depthMode = (manifest?.get("arcore") as? JsonObject)?.get("depth_mode")?.jsonPrimitive?.content,
             sizeBytes = dir.walkTopDown().filter { it.isFile }.sumOf { it.length() },
+            hasModel = ModelBuilder.hasModel(dir),
         )
     }
 
@@ -64,7 +68,7 @@ class CaptureRepository(val root: File) {
         outFile.parentFile?.mkdirs()
         ZipOutputStream(BufferedOutputStream(FileOutputStream(outFile), 256 * 1024)).use { zos ->
             zos.setLevel(Deflater.BEST_SPEED)
-            dir.walkTopDown().filter { it.isFile && !it.name.endsWith(".tmp") }.sortedBy { it.path }.forEach { f ->
+            dir.walkTopDown().onEnter { !it.name.endsWith(".tmp") }.filter { it.isFile && !it.name.endsWith(".tmp") }.sortedBy { it.path }.forEach { f ->
                 val rel = f.relativeTo(dir).invariantSeparatorsPath
                 zos.putNextEntry(ZipEntry("${dir.name}/$rel").apply { time = f.lastModified() })
                 f.inputStream().use { it.copyTo(zos) }

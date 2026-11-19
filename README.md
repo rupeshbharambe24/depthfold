@@ -9,10 +9,9 @@
 ![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)
 ![Android: ARCore](https://img.shields.io/badge/android-ARCore%20Depth%20API-3ddc84.svg)
 ![Python: 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab.svg)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 [Quick start](#quick-start) · [How it works](#how-it-works) · [Accuracy](#accuracy) · [Roadmap](#roadmap) ·
-[FAQ](#faq) · [Contributing](#contributing)
+[FAQ](#faq) · [Development](#development)
 
 </div>
 
@@ -23,17 +22,16 @@
 
 Depthfold records what Google [ARCore](https://developers.google.com/ar) already knows on hundreds of millions of
 Android phones (camera pose in metres, per-pixel depth with confidence, lens intrinsics) into an open
-**capture bundle**. A desktop toolkit then turns that bundle into a 3D mesh, a 2D profile drawing and a
-**measurement report in which every number carries its units, an uncertainty and how it was obtained**.
+**capture bundle**. The app builds a 3D mesh from it **on the phone**, which you can view and share as GLB, STL or
+PLY. A desktop toolkit adds a 2D profile drawing and a **measurement report in which every number carries its
+units, an uncertainty and how it was obtained**.
 
 Scan a bottle and you get its height, its diameter at every height, its volume, a DXF/SVG profile for CAD and a
 mesh for Blender or a 3D printer. The raw capture is kept, so it can be re-processed later with better algorithms.
 
 > [!IMPORTANT]
-> **Alpha.** The recorder builds and its logic is unit-tested, and the toolkit is tested end to end on synthetic
-> captures, but **nothing has been tested on a physical phone yet**. If you have an
-> [ARCore phone](https://developers.google.com/ar/devices), a [device report](https://github.com/rupeshbharambe24/depthfold/issues/new?template=device_report.yml)
-> is the most useful contribution you can make right now.
+> **Alpha.** The app's capture and 3D model code is unit-tested and cross-checked against the toolkit, and the
+> toolkit is tested end to end on synthetic captures, but **nothing has been tested on a physical phone yet**.
 
 ## Why
 
@@ -52,6 +50,7 @@ Depthfold aims to fill those gaps in the open.
 
 | From one capture | Format | Use it in |
 |---|---|---|
+| Mesh, built on the phone | `.glb` `.stl` (mm) `.ply`, shared from the app | 3D viewers, Blender, slicers, CAD |
 | Mesh | `.ply` `.obj` `.glb` `.stl` (mm) | Blender, MeshLab, web viewers, slicers for 3D printing |
 | Point cloud | `.ply` | CloudCompare, Open3D, robotics |
 | Measurement report | `measurements.json` | Your own code: values, units, 1-sigma uncertainty, method and provenance |
@@ -136,9 +135,15 @@ cd android
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Every push to `main` also builds a debug APK, downloadable from the
-[CI runs](https://github.com/rupeshbharambe24/depthfold/actions/workflows/ci.yml). Share the capture zip to your
-computer, unzip it and run the same `validate`, `fuse` and `measure` commands on it.
+Or download the debug APK from the [latest release](https://github.com/rupeshbharambe24/depthfold/releases)
+(every push to `main` also builds one in [CI](https://github.com/rupeshbharambe24/depthfold/actions/workflows/ci.yml)).
+
+In the app, press **Record**, walk slowly around the object and press **Stop**. Then open **Captures**:
+
+- **Build 3D model** fuses the depth on the phone (a few seconds), opens a 3D viewer (drag to rotate, pinch to
+  zoom) and lets you share the mesh as GLB, STL (mm) or PLY.
+- **Share zip** sends the whole capture to a computer, where you unzip it and run the same `validate`, `fuse` and
+  `measure` commands on it.
 
 ## Accuracy
 
@@ -153,26 +158,26 @@ non-tracking frames), the toolkit currently recovers:
 | Box | length / width / height | 180 / 110 / 75 mm | ±0.2 mm |
 | Cylinder, smooth depth (no confidence) | diameter | 70 mm | −1.8 mm |
 | Cylinder, 1 mm / 0.2° pose noise | diameter | 70 mm | −1.0 mm |
+| Cylinder, mesh built by the phone code, measured by the toolkit | diameter / height | 70 / 240 mm | −0.7 / +0.4 mm |
+| Box, mesh built by the phone code, measured by the toolkit | length / width / height | 180 / 110 / 75 mm | +0.1 / +0.1 / +0.2 mm |
 
 **Real phones will be worse.** Published tests put single ARCore depth readings at centimetre level, so results
 depend on fusing many frames, on the surface (transparent, shiny and dark objects defeat depth) and on the device.
-Measuring this per device is the first item on the roadmap, and the reason
-[device reports](https://github.com/rupeshbharambe24/depthfold/issues/new?template=device_report.yml) matter.
+Measuring this per device is the first item on the roadmap.
 
 ## Roadmap
 
 | Status | Milestone |
 |---|---|
 | Done | Capture bundle spec v0.1, Android recorder, toolkit (`validate`, `fuse`, `measure`, `export`, `synth`), interop check, CI |
+| Done | On-phone 3D model: depth fusion, 3D viewer, GLB / STL / PLY sharing (v0.2) |
 | Next | **Real-device validation** on common phones (Samsung Galaxy A/M, Redmi Note, Pixel, OnePlus Nord), and fixes for what breaks |
 | Planned | **Measurement report schema** as a stable, versioned JSON Schema |
 | Planned | **Per-device accuracy benchmark**: reference objects, shared captures, public leaderboard |
 | Planned | **More shape fits**: spheres, cones and tapered profiles, freeform profiles, flat outlines of planar parts |
 | Planned | **More export formats**: USDZ, 3MF, E57, and glTF with real-world units and measurement annotations |
-| Planned | On-device fusion and an in-app preview of the mesh and measurements |
+| Planned | On-phone measurements: box and cylinder dimensions and volume in the app |
 | Planned | Optional detail refinement with photogrammetry or Gaussian splatting from the recorded poses |
-
-Need a shape or a file format that is not listed? [Propose it](https://github.com/rupeshbharambe24/depthfold/issues/new?template=shape_or_format.yml).
 
 ## FAQ
 
@@ -204,7 +209,7 @@ anything that moves during the capture. Matte, rigid objects 10–100 cm across,
 
 iPhone already has strong capture apps and open recorders such as Stray Scanner. Android, where most phones in many
 countries are, does not have an open raw-depth recorder. The bundle format is not Android-specific, so an iOS
-recorder is welcome as a contribution.
+recorder could read and write it later.
 </details>
 
 <details>
@@ -221,20 +226,14 @@ Yes. Depthfold is Apache-2.0 and its core dependencies are permissively licensed
 Google under its own terms.
 </details>
 
-## Contributing
+## Development
 
-Contributions of every size are welcome, and you do not need a phone for most of them.
-
-- **Have an ARCore phone?** File a [device accuracy report](https://github.com/rupeshbharambe24/depthfold/issues/new?template=device_report.yml).
-- **Python / geometry:** better fusion, new shape fits, faster measurement. Start in [`processing/`](processing/).
-- **Android / Kotlin:** capture guidance, on-device preview, UI. Start in [`android/`](android/).
-- **A shape or format you need:** propose a [shape fit or export format](https://github.com/rupeshbharambe24/depthfold/issues/new?template=shape_or_format.yml).
-- **Docs and examples:** tutorials, translations, sample captures.
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) to get set up, browse
-[good first issues](https://github.com/rupeshbharambe24/depthfold/labels/good%20first%20issue), or start a thread in
-[Discussions](https://github.com/rupeshbharambe24/depthfold/discussions). Everyone taking part follows the
-[Code of Conduct](CODE_OF_CONDUCT.md).
+Depthfold is in early, focused development: the core capture, model and measurement pipeline comes first, and
+outside code contributions will be opened up once it is stable on real phones. Until then, bug reports and
+questions are welcome in [Issues](https://github.com/rupeshbharambe24/depthfold/issues) and
+[Discussions](https://github.com/rupeshbharambe24/depthfold/discussions); please open an issue before starting any
+pull request. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to build and test both parts. Everyone taking part
+follows the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Citing
 

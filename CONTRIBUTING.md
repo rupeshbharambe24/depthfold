@@ -1,21 +1,15 @@
 # Contributing to Depthfold
 
-Thanks for helping. Depthfold is young, so there is room to shape it, and most contributions do not need a phone.
+Depthfold is in early, focused development. The core capture, 3D model and measurement pipeline is being built
+and validated on real phones first, so outside code contributions are not being sought yet.
 
-## Ways to contribute
+- **Bug reports, device results and questions are welcome** in
+  [Issues](https://github.com/rupeshbharambe24/depthfold/issues) and
+  [Discussions](https://github.com/rupeshbharambe24/depthfold/discussions).
+- **Before writing code, open an issue** and wait for a go-ahead, so that work fits the current plan. Unsolicited
+  pull requests may be closed.
 
-| You have | You can |
-|---|---|
-| An [ARCore phone](https://developers.google.com/ar/devices) | Record a ruler-measured object and file a [device accuracy report](https://github.com/rupeshbharambe24/depthfold/issues/new?template=device_report.yml) |
-| Python / geometry skills | Improve fusion, add shape fits, speed up measurement, add export formats |
-| Android / Kotlin skills | Capture guidance, on-device preview, UI, robustness on real devices |
-| A shape or file format you need | Propose a [shape fit or export format](https://github.com/rupeshbharambe24/depthfold/issues/new?template=shape_or_format.yml) (cones, spheres, flat outlines, USDZ, 3MF, ...) |
-| Writing skills | Tutorials, clearer docs, translations |
-
-Issues labelled [`good first issue`](https://github.com/rupeshbharambe24/depthfold/labels/good%20first%20issue) are
-scoped for a first contribution, and [`help wanted`](https://github.com/rupeshbharambe24/depthfold/labels/help%20wanted)
-marks work where outside help is especially welcome. Comment on an issue before starting so work is not duplicated.
-For larger changes, open an issue or a [discussion](https://github.com/rupeshbharambe24/depthfold/discussions) first.
+The rest of this guide is how the project is built and tested, for anyone working on it.
 
 ## Development setup
 
@@ -46,8 +40,8 @@ cd android
 ./gradlew assembleDebug       # app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Keep logic that can be tested without Android (bundle writing, geometry, image conversion) in plain Kotlin under
-`capture/`, with JVM unit tests. If you test on a phone, say which model in the pull request.
+Keep logic that can be tested without Android (bundle writing and reading, fusion, meshing, file formats, image
+conversion) in plain Kotlin under `capture/` and `model/`, with JVM unit tests. If you test on a phone, say which model in the pull request.
 
 ### Both together
 
@@ -55,8 +49,10 @@ Keep logic that can be tested without Android (bundle writing, geometry, image c
 scripts/interop-check.sh
 ```
 
-This writes a bundle with the Android writer code (as a JVM test) and checks that the toolkit validates it and
-reconstructs the scene correctly. Run it whenever you touch the bundle writer or reader.
+This checks both directions between the app and the toolkit: a bundle written by the Android writer code (as a JVM
+test) must validate and fuse correctly in the toolkit, and a mesh built by the app's on-device model builder from a
+toolkit-made synthetic bottle must measure correctly in the toolkit. Run it whenever you touch the bundle writer,
+the reader or the model builder.
 
 ### README figure
 
