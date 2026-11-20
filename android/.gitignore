@@ -20,3 +20,4 @@ captures/
 # Signing material
 *.jks
 *.keystore
+!app/debug.keystore

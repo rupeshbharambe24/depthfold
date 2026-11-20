@@ -13,9 +13,20 @@ android {
         applicationId = "dev.depthfold.android"
         minSdk = 24
         targetSdk = 37
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.1"
         buildConfigField("String", "ARCORE_SDK_VERSION", "\"${libs.versions.arcore.get()}\"")
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            // A shared, deliberately public debug key, so every debug APK (local or CI) installs over the previous
+            // one instead of needing an uninstall. It is not a secret and must never sign a store release.
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {

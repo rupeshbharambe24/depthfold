@@ -9,13 +9,16 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.util.Log
 import com.google.ar.core.Anchor
+import com.google.ar.core.Coordinates2d
 import com.google.ar.core.DepthPoint
 import com.google.ar.core.Frame
 import com.google.ar.core.HitResult
 import com.google.ar.core.Plane
 import com.google.ar.core.Point
+import com.google.ar.core.Pose
 import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
+import com.google.ar.core.exceptions.NotYetAvailableException
 import com.google.ar.core.exceptions.SessionPausedException
 import dev.depthfold.android.BuildConfig
 import dev.depthfold.android.capture.AndroidJpegEncoder
@@ -23,11 +26,14 @@ import dev.depthfold.android.capture.BundleManifest
 import dev.depthfold.android.capture.BundleWriter
 import dev.depthfold.android.capture.CapturePolicy
 import dev.depthfold.android.capture.CaptureRepository
+import dev.depthfold.android.capture.DepthMode
 import dev.depthfold.android.capture.DeviceInfo
+import dev.depthfold.android.capture.Intrinsics
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.nio.ByteOrder
 import java.util.Date
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit
@@ -227,7 +233,7 @@ class ArRenderer(
         }
 
         try {
-            updateMeasurement(frame, tracking)
+            updateMeasurement(frame, s, tracking)
         } catch (e: RuntimeException) {
             Log.w(TAG, "measurement failed", e)
         }
@@ -254,7 +260,7 @@ class ArRenderer(
         _state.update { it.copy(framesDropped = n) }
     }
 
-    private fun updateMeasurement(frame: Frame, tracking: TrackingState) {
+    private fun updateMeasurement(frame: Frame, s: SessionSetup, tracking: TrackingState) {
         if (resetMeasureRequested.getAndSet(false)) {
             anchors.forEach { it.first.detach() }
             anchors.clear()
@@ -270,16 +276,24 @@ class ArRenderer(
                 message = "Not tracking yet. Move the phone slowly."
                 continue
             }
-            val hit = pickHit(frame.hitTest(tap[0], tap[1]))
-            if (hit == null) {
-                message = "No surface found there. Move slowly so surfaces can be detected."
+            val hits = frame.hitTest(tap[0], tap[1])
+            val placed = pickSurfaceHit(hits)?.let { it.createAnchor() to if (it.trackable is Plane) "plane" else "depth" }
+                ?: depthHit(frame, s, tap[0], tap[1])?.let { s.session.createAnchor(it) to "depth" }
+                ?: pickPointHit(hits)?.let { it.createAnchor() to "point" }
+            if (placed == null) {
+                message = if (s.depthMode == DepthMode.NONE) {
+                    "No surface found there. Point at a well-lit, textured surface and move the phone side to " +
+                        "side until it is detected, then tap again."
+                } else {
+                    "No depth there yet. Keep it 0.3 to 2 m away, move the phone a little, and tap again."
+                }
                 continue
             }
             if (anchors.size >= 2) {
                 anchors.forEach { it.first.detach() }
                 anchors.clear()
             }
-            anchors.add(hit.first.createAnchor() to hit.second)
+            anchors.add(placed)
             message = if (anchors.size == 1) "Tap a second point." else null
         }
 
@@ -303,23 +317,71 @@ class ArRenderer(
         _measure.update { it.copy(points = points, distanceCm = distanceCm, hitKinds = kinds, message = message) }
     }
 
-    /** Prefers depth points and planes (inside their polygon), then feature points with an estimated normal. */
-    private fun pickHit(hits: List<HitResult>): Pair<HitResult, String>? {
-        for (hit in hits) {
-            when (val t = hit.trackable) {
-                is DepthPoint -> if (t.trackingState == TrackingState.TRACKING) return hit to "depth"
-                is Plane -> if (t.trackingState == TrackingState.TRACKING && t.isPoseInPolygon(hit.hitPose)) {
-                    return hit to "plane"
+    /** ARCore depth points and planes (inside their polygon). Depth points only appear in AUTOMATIC depth mode. */
+    private fun pickSurfaceHit(hits: List<HitResult>): HitResult? = hits.firstOrNull { hit ->
+        when (val t = hit.trackable) {
+            is DepthPoint -> t.trackingState == TrackingState.TRACKING
+            is Plane -> t.trackingState == TrackingState.TRACKING && t.isPoseInPolygon(hit.hitPose)
+            else -> false
+        }
+    }
+
+    /** Feature points with an estimated normal: the least reliable placement, used last. */
+    private fun pickPointHit(hits: List<HitResult>): HitResult? = hits.firstOrNull { hit ->
+        val t = hit.trackable
+        t is Point && t.orientationMode == Point.OrientationMode.ESTIMATED_SURFACE_NORMAL
+    }
+
+    /**
+     * World pose of the depth under view pixel ([x], [y]), read from the frame's own depth image (raw or
+     * smooth, whichever the session records). Null when the session has no depth or none is valid there.
+     */
+    private fun depthHit(frame: Frame, s: SessionSetup, x: Float, y: Float): Pose? {
+        if (s.depthMode == DepthMode.NONE) return null
+        val raw = s.depthMode == DepthMode.RAW
+        val image = try {
+            if (raw) frame.acquireRawDepthImage16Bits() else frame.acquireDepthImage16Bits()
+        } catch (_: NotYetAvailableException) {
+            return null
+        }
+        return image.use { depth ->
+            val confidence = if (raw) {
+                try {
+                    frame.acquireRawDepthConfidenceImage()
+                } catch (_: NotYetAvailableException) {
+                    null
                 }
+            } else {
+                null
+            }
+            confidence.use { conf ->
+                // Depth covers the GPU texture's field of view, so go view -> normalised texture coordinates.
+                val tex = FloatArray(2)
+                frame.transformCoordinates2d(Coordinates2d.VIEW, floatArrayOf(x, y), Coordinates2d.TEXTURE_NORMALIZED, tex)
+                val w = depth.width
+                val h = depth.height
+                val u = tex[0].toDouble() * w
+                val v = tex[1].toDouble() * h
+                val dPlane = depth.planes[0]
+                val dBuf = dPlane.buffer.duplicate().order(ByteOrder.LITTLE_ENDIAN)
+                val cPlane = conf?.takeIf { it.width == w && it.height == h }?.planes?.get(0)
+                val cBuf = cPlane?.buffer?.duplicate()
+                val z = DepthTap.medianDepth(
+                    width = w,
+                    height = h,
+                    depthMmAt = { px, py -> dBuf.getShort(py * dPlane.rowStride + px * dPlane.pixelStride).toInt() and 0xFFFF },
+                    confidenceAt = cBuf?.let { b ->
+                        { px, py -> b.get(py * cPlane.rowStride + px * cPlane.pixelStride).toInt() and 0xFF }
+                    },
+                    u = u,
+                    v = v,
+                ) ?: return@use null
+                val ti = frame.camera.textureIntrinsics
+                val k = Intrinsics.forDepth(Intrinsics.fromArCore(ti.focalLength, ti.principalPoint, ti.imageDimensions), w, h)
+                val world = frame.camera.pose.transformPoint(DepthTap.cameraPointGl(k, u, v, z))
+                Pose.makeTranslation(world)
             }
         }
-        for (hit in hits) {
-            val t = hit.trackable
-            if (t is Point && t.orientationMode == Point.OrientationMode.ESTIMATED_SURFACE_NORMAL) {
-                return hit to "point"
-            }
-        }
-        return null
     }
 
     companion object {

@@ -138,7 +138,10 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 Or download the debug APK from the [latest release](https://github.com/rupeshbharambe24/depthfold/releases)
 (every push to `main` also builds one in [CI](https://github.com/rupeshbharambe24/depthfold/actions/workflows/ci.yml)).
 
-In the app, press **Record**, walk slowly around the object and press **Stop**. Then open **Captures**:
+Debug APKs from 0.2.1 on share one signing key, so they install over each other and keep your captures.
+
+**Measure** in the live view gives a quick tape-measure distance: tap two points on an object or surface. In the
+app, press **Record**, walk slowly around the object and press **Stop**. Then open **Captures**:
 
 - **Build 3D model** fuses the depth on the phone (a few seconds), opens a 3D viewer (drag to rotate, pinch to
   zoom) and lets you share the mesh as GLB, STL (mm) or PLY.

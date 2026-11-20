@@ -5,6 +5,20 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-20
+
+### Fixed
+
+- Tap-to-measure said "No surface found" on objects: ARCore only returns depth hits in AUTOMATIC depth mode, and
+  the app records in RAW_DEPTH_ONLY. Taps now fall back to the frame's own depth under the finger (median of the
+  nearest confident pixels), so points can be placed on objects, not only on detected planes.
+- Clearer messages when a tap finds no surface or no depth.
+
+### Changed
+
+- Debug APKs are signed with a shared key checked into the repo (`android/app/debug.keystore`), so new versions
+  install over old ones and keep captures. Installing 0.2.1 over 0.2.0 or 0.1.0 still needs one uninstall.
+
 ## [0.2.0] - 2026-11-19
 
 ### Added
@@ -41,6 +55,7 @@ First public alpha.
 
 - Not yet tested on physical devices.
 
-[Unreleased]: https://github.com/rupeshbharambe24/depthfold/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/rupeshbharambe24/depthfold/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/rupeshbharambe24/depthfold/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/rupeshbharambe24/depthfold/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/rupeshbharambe24/depthfold/releases/tag/v0.1.0
