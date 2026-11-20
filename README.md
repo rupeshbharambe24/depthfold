@@ -140,7 +140,8 @@ Or download the debug APK from the [latest release](https://github.com/rupeshbha
 
 Debug APKs from 0.2.1 on share one signing key, so they install over each other and keep your captures.
 
-**Measure** in the live view gives a quick tape-measure distance: tap two points on an object or surface. In the
+**Measure** in the live view is a quick tape measure: aim the centre crosshair and press **Add** (or tap) at two
+points on an object or surface. In the
 app, press **Record**, walk slowly around the object and press **Stop**. Then open **Captures**:
 
 - **Build 3D model** fuses the depth on the phone (a few seconds), opens a 3D viewer (drag to rotate, pinch to

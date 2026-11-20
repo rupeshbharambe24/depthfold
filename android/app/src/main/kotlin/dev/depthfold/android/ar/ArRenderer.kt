@@ -173,6 +173,9 @@ class ArRenderer(
         if (_measure.value.enabled && pendingTaps.size < 4) pendingTaps.add(floatArrayOf(x, y))
     }
 
+    /** Places a point under the centre crosshair, resolved on the GL thread like a tap. */
+    fun addPointAtCentre() = onTap(Float.NaN, Float.NaN)
+
     // ---------------------------------------------------------------- GL thread
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -276,11 +279,10 @@ class ArRenderer(
                 message = "Not tracking yet. Move the phone slowly."
                 continue
             }
-            val hits = frame.hitTest(tap[0], tap[1])
-            val placed = pickSurfaceHit(hits)?.let { it.createAnchor() to if (it.trackable is Plane) "plane" else "depth" }
-                ?: depthHit(frame, s, tap[0], tap[1])?.let { s.session.createAnchor(it) to "depth" }
-                ?: pickPointHit(hits)?.let { it.createAnchor() to "point" }
-            if (placed == null) {
+            val x = if (tap[0].isNaN()) viewWidth / 2f else tap[0]
+            val y = if (tap[1].isNaN()) viewHeight / 2f else tap[1]
+            val placement = resolve(frame, s, x, y)
+            if (placement == null) {
                 message = if (s.depthMode == DepthMode.NONE) {
                     "No surface found there. Point at a well-lit, textured surface and move the phone side to " +
                         "side until it is detected, then tap again."
@@ -289,18 +291,20 @@ class ArRenderer(
                 }
                 continue
             }
+            val placed = (placement.hit?.createAnchor() ?: s.session.createAnchor(placement.pose)) to placement.kind
             if (anchors.size >= 2) {
                 anchors.forEach { it.first.detach() }
                 anchors.clear()
             }
             anchors.add(placed)
-            message = if (anchors.size == 1) "Tap a second point." else null
+            message = if (anchors.size == 1) "Now the second point." else null
         }
 
         anchors.removeAll { (anchor, _) ->
             (anchor.trackingState == TrackingState.STOPPED).also { if (it) anchor.detach() }
         }
 
+        val positions = anchors.map { it.first.pose.translation }
         val points: List<ScreenPoint?>
         var distanceCm: Double? = null
         if (anchors.isEmpty() || viewWidth == 0) {
@@ -309,12 +313,61 @@ class ArRenderer(
             frame.camera.getViewMatrix(viewMatrix, 0)
             frame.camera.getProjectionMatrix(projMatrix, 0, 0.05f, 100f)
             val viewProj = ScreenProjection.multiply(projMatrix, viewMatrix)
-            val positions = anchors.map { it.first.pose.translation }
             points = positions.map { ScreenProjection.project(viewProj, it, viewWidth, viewHeight) }
             if (positions.size == 2) distanceCm = ScreenProjection.distance(positions[0], positions[1]) * 100.0
         }
+
+        // What the centre crosshair is on: distance from the phone, and the live length from the first point.
+        var aimCm: Double? = null
+        var previewCm: Double? = null
+        if (tracking == TrackingState.TRACKING && viewWidth > 0) {
+            val aim = try {
+                resolve(frame, s, viewWidth / 2f, viewHeight / 2f)
+            } catch (e: RuntimeException) {
+                Log.w(TAG, "crosshair hit test failed", e)
+                null
+            }
+            if (aim != null) {
+                aimCm = ScreenProjection.distance(aim.pose.translation, frame.camera.pose.translation) * 100.0
+                if (positions.size == 1) previewCm = ScreenProjection.distance(positions[0], aim.pose.translation) * 100.0
+            }
+        }
+
         val kinds = anchors.map { it.second }
-        _measure.update { it.copy(points = points, distanceCm = distanceCm, hitKinds = kinds, message = message) }
+        _measure.update {
+            it.copy(
+                points = points,
+                distanceCm = distanceCm,
+                hitKinds = kinds,
+                message = message,
+                aimDistanceCm = aimCm,
+                previewCm = previewCm,
+            )
+        }
+    }
+
+    /** Where a measurement point at view pixel (x, y) goes; [hit] is set when it came from an ARCore hit test. */
+    private class Placement(val pose: Pose, val kind: String, val hit: HitResult?)
+
+    /**
+     * Resolves view pixel ([x], [y]) to a surface point. Planes and ARCore depth points come first, except when
+     * the frame's own depth shows something clearly in front of the plane (the ray over a bottle's top meets the
+     * table behind it); then the depth point wins. Without either, a feature point with a normal is used.
+     */
+    private fun resolve(frame: Frame, s: SessionSetup, x: Float, y: Float): Placement? {
+        val hits = frame.hitTest(x, y)
+        val surface = pickSurfaceHit(hits)
+        val depth = depthHit(frame, s, x, y)
+        if (surface != null) {
+            val isPlane = surface.trackable is Plane
+            val depthInFront = isPlane && depth != null && DepthTap.depthIsInFrontOfPlane(
+                surface.distance,
+                ScreenProjection.distance(depth.translation, frame.camera.pose.translation).toFloat(),
+            )
+            if (!depthInFront) return Placement(surface.hitPose, if (isPlane) "plane" else "depth", surface)
+        }
+        if (depth != null) return Placement(depth, "depth", null)
+        return pickPointHit(hits)?.let { Placement(it.hitPose, "point", it) }
     }
 
     /** ARCore depth points and planes (inside their polygon). Depth points only appear in AUTOMATIC depth mode. */

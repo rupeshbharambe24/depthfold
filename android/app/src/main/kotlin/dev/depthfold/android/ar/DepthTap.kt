@@ -19,9 +19,11 @@ object DepthTap {
     const val MAX_DEPTH_MM = 8000
 
     /**
-     * Median depth in metres of the valid pixels nearest to (u, v), in depth-image pixel coordinates with the
+     * Depth in metres of the surface under (u, v), in depth-image pixel coordinates with the
      * pixel-corner convention (pixel i covers [i, i + 1)). A pixel is valid when its depth is in
      * (0, [MAX_DEPTH_MM]] and, if [confidenceAt] is given, its confidence is at least [minConfidence].
+     * The window grows until it holds enough valid pixels; if it then straddles an object's edge, the nearer
+     * surface wins (see [foregroundMedian]), so a tap at the rim of a bottle does not land on the wall behind it.
      * Returns null when too few valid pixels lie within the largest search radius.
      */
     fun medianDepth(
@@ -46,13 +48,30 @@ object DepthTap {
                     samples.add(d)
                 }
             }
-            if (samples.size >= MIN_SAMPLES) {
-                samples.sort()
-                return samples[samples.size / 2] / 1000.0
-            }
+            if (samples.size >= MIN_SAMPLES) return foregroundMedian(samples) / 1000.0
         }
         return null
     }
+
+    /**
+     * Median of the nearest surface among [depthsMm]: samples within max(30 mm, 5 %) of the 10th percentile.
+     * Using a low percentile rather than the minimum keeps a single noisy near pixel from deciding.
+     */
+    internal fun foregroundMedian(depthsMm: List<Int>): Int {
+        val sorted = depthsMm.sorted()
+        val ref = sorted[sorted.size / 10]
+        val limit = ref + maxOf(30, ref / 20)
+        val near = sorted.filter { it <= limit }
+        return near[near.size / 2]
+    }
+
+    /**
+     * True when a depth point is clearly nearer along the tap ray than a plane hit: something (the object) stands
+     * in front of the plane there, as when the ray over a bottle's top meets the table behind it. Distances are
+     * from the camera, in metres.
+     */
+    fun depthIsInFrontOfPlane(planeDistance: Float, depthDistance: Float): Boolean =
+        depthDistance < planeDistance - maxOf(0.03f, 0.05f * planeDistance)
 
     /**
      * Back-projects depth-image pixel coordinates (u, v) at z-depth [z] metres into the ARCore camera frame

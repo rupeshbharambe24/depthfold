@@ -42,8 +42,10 @@ Compose BOM 2026.09.00, ARCore SDK `com.google.ar:core:1.57.0`, compileSdk/targe
    0.3 to 2 m away. Press **Stop** to finalise the bundle.
 4. **Captures** lists recorded bundles with frame count, depth mode and size. **Share zip** sends a zip of the
    bundle through the Android share sheet; **Delete** removes it.
-5. **Measure** (optional): tap two points on a surface to see the distance between them in centimetres. A third tap
-   starts a new measurement.
+5. **Measure** (optional): aim the centre crosshair at a point and press **Add**, or tap the screen, then do the
+   same for a second point to see the distance between them in centimetres. The crosshair shows the distance from
+   the phone, and after the first point a dashed line shows the live length. A third point starts a new
+   measurement.
 
 ## What gets recorded
 
@@ -121,9 +123,9 @@ Before relying on the data, record a short bundle on a device and run it through
 
 ## Known limitations
 
-- Tap-to-measure prefers depth hits, but in `RAW_DEPTH_ONLY` mode ARCore produces no depth hit results, so
-  measurements on raw-depth devices use plane and feature-point hits only. Measurements need a detected plane or
-  a textured surface.
+- Tap-to-measure uses ARCore planes and depth points, plus the frame's own depth under the tap (in
+  `RAW_DEPTH_ONLY` mode ARCore returns no depth hits). Raw depth is sparse and centimetre-level per frame, so a
+  single two-point measurement is a quick estimate; the fused model is more accurate.
 - The depth image can lag the camera frame (`depth_timestamp_ns < timestamp_ns`), while `T_world_camera` is the
   pose at `timestamp_ns`. Readers that need exact alignment should use frames where the two timestamps match.
 - No on-device point cloud (`points.ply`) yet.

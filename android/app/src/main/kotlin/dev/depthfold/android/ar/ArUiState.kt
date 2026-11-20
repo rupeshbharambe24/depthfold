@@ -46,4 +46,8 @@ data class MeasureState(
     /** What kind of surface each point was placed on, e.g. "depth", "plane", "point". */
     val hitKinds: List<String> = emptyList(),
     val message: String? = null,
+    /** Distance from the phone to the surface under the centre crosshair, or null if nothing is there. */
+    val aimDistanceCm: Double? = null,
+    /** With one point placed: distance from it to the surface under the crosshair. */
+    val previewCm: Double? = null,
 )

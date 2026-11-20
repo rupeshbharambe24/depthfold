@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
@@ -92,7 +93,9 @@ fun RecordScreen(
                 }
             }
             Spacer(Modifier.weight(1f))
-            if (measure.enabled) MeasureReadout(measure, onReset = renderer::resetMeasurement)
+            if (measure.enabled) {
+                MeasureReadout(measure, onAddPoint = renderer::addPointAtCentre, onReset = renderer::resetMeasurement)
+            }
             Spacer(Modifier.height(8.dp))
             Controls(
                 state = state,
@@ -156,7 +159,7 @@ private fun HintBanner(text: String) {
 }
 
 @Composable
-private fun MeasureReadout(measure: MeasureState, onReset: () -> Unit) {
+private fun MeasureReadout(measure: MeasureState, onAddPoint: () -> Unit, onReset: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -166,17 +169,38 @@ private fun MeasureReadout(measure: MeasureState, onReset: () -> Unit) {
     ) {
         Column(Modifier.weight(1f)) {
             val d = measure.distanceCm
+            val preview = measure.previewCm
             Text(
-                if (d != null) String.format(Locale.ROOT, "%.1f cm", d) else "Tap two points to measure",
-                color = MeasureYellow,
-                style = MaterialTheme.typography.titleMedium,
+                when {
+                    d != null -> cm(d)
+                    preview != null -> cm(preview)
+                    else -> "Aim the + at a point and press Add, or tap the screen"
+                },
+                color = if (d != null) MeasureYellow else Color.White,
+                style = if (d != null || preview != null) {
+                    MaterialTheme.typography.titleMedium
+                } else {
+                    MaterialTheme.typography.bodyMedium
+                },
             )
-            val detail = measure.message ?: measure.hitKinds.takeIf { it.isNotEmpty() }?.joinToString(" to ")
+            val detail = measure.message ?: when {
+                d != null -> "Between the two points (${measure.hitKinds.joinToString(" to ")}). It stays fixed as you move."
+                preview != null -> "From the first point to the +"
+                else -> null
+            }
             if (detail != null) Text(detail, color = Color.White, style = MaterialTheme.typography.bodySmall)
+            Text(
+                measure.aimDistanceCm?.let { "Phone to +: ${cm(it)}" } ?: "Phone to +: no surface",
+                color = Color.White.copy(alpha = 0.75f),
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
+        Button(onClick = onAddPoint, enabled = measure.aimDistanceCm != null) { Text("Add") }
         TextButton(onClick = onReset) { Text("Reset") }
     }
 }
+
+private fun cm(value: Double): String = String.format(Locale.ROOT, "%.1f cm", value)
 
 @Composable
 private fun Controls(
@@ -231,16 +255,35 @@ private fun Controls(
 @Composable
 private fun MeasureOverlay(measure: MeasureState, modifier: Modifier) {
     Canvas(modifier) {
+        if (!measure.enabled) return@Canvas
+        val centre = Offset(size.width / 2, size.height / 2)
         val pts = measure.points
         val a = pts.getOrNull(0)
         val b = pts.getOrNull(1)
         if (a != null && b != null) {
             drawLine(MeasureYellow, Offset(a.x, a.y), Offset(b.x, b.y), strokeWidth = 4.dp.toPx())
+        } else if (a != null && pts.size == 1 && measure.previewCm != null) {
+            drawLine(
+                Color.White,
+                Offset(a.x, a.y),
+                centre,
+                strokeWidth = 3.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(12.dp.toPx(), 8.dp.toPx())),
+            )
         }
         for (p in pts) {
             if (p == null) continue
             drawCircle(Color.White, radius = 9.dp.toPx(), center = Offset(p.x, p.y))
             drawCircle(MeasureYellow, radius = 9.dp.toPx(), center = Offset(p.x, p.y), style = Stroke(3.dp.toPx()))
         }
+        // Centre crosshair: yellow when there is a surface under it, grey when not.
+        val tint = if (measure.aimDistanceCm != null) MeasureYellow else Color.White.copy(alpha = 0.5f)
+        val arm = 14.dp.toPx()
+        val gap = 4.dp.toPx()
+        val w = 2.dp.toPx()
+        drawLine(tint, Offset(centre.x - arm, centre.y), Offset(centre.x - gap, centre.y), strokeWidth = w)
+        drawLine(tint, Offset(centre.x + gap, centre.y), Offset(centre.x + arm, centre.y), strokeWidth = w)
+        drawLine(tint, Offset(centre.x, centre.y - arm), Offset(centre.x, centre.y - gap), strokeWidth = w)
+        drawLine(tint, Offset(centre.x, centre.y + gap), Offset(centre.x, centre.y + arm), strokeWidth = w)
     }
 }

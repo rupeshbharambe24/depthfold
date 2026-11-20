@@ -5,6 +5,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-11-20
+
+### Fixed
+
+- Measuring an object standing on a table could put a point on the table behind it: the ray over the object's top
+  meets the table plane, and plane hits were always preferred. A plane hit is now overridden when the frame's
+  depth shows a surface clearly in front of it.
+- A tap at an object's edge took the median of object and background depth; the nearer surface now wins.
+
+### Added
+
+- Measure mode has a centre crosshair with the live distance from the phone, an **Add** button that places a point
+  under the crosshair (so the finger does not hide the target), and a dashed preview line with its live length
+  from the first point. The result notes that it is the distance between the two points and stays fixed as you move.
+
 ## [0.2.1] - 2026-11-20
 
 ### Fixed
@@ -55,7 +70,8 @@ First public alpha.
 
 - Not yet tested on physical devices.
 
-[Unreleased]: https://github.com/rupeshbharambe24/depthfold/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/rupeshbharambe24/depthfold/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/rupeshbharambe24/depthfold/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/rupeshbharambe24/depthfold/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/rupeshbharambe24/depthfold/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/rupeshbharambe24/depthfold/releases/tag/v0.1.0
